@@ -6,7 +6,7 @@ name: CI
 on:
   # Triggers the workflow on push or pull request events but only for the "main" branch
   push:
-    branches: [ "main" ]
+    branches: [ "main", "feature-changelog"]
   pull_request:
     branches: [ "main" ]
 
@@ -28,6 +28,7 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: 3.9
+          token: ${{ secrets.PRIVATE_ACCESS_TOKEN }}
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -42,3 +43,34 @@ jobs:
       # - name: Test with pytest
         # run: |
           # pytest
+      - name: Version Closing
+        run: |
+          if [[ github.event.head_commit.message != 'Inserting the information of the changes in the changelog file' ]] ; then 
+            version=$(date +"%Y.%m.%d.%H%M")
+            colons=":"
+            echo -e "## v$version\n" | tee -a CHANGELOG-AUX.md
+            if [ `find unreleased/additions/ -type f -name "*.txt" | wc -l` -ge 1 ] ; then cat unreleased/additions/* >> unreleased/additions/added.txt; fi
+            if [ `find unreleased/additions/ -type f -name "*.txt" | wc -l` -ge 1 ] ; then echo -e "### Added\n" | tee -a CHANGELOG-AUX.md; fi
+            if [ `find unreleased/additions/ -type f -name "*.txt" | wc -l` -ge 1 ] ; then cat unreleased/additions/added.txt >> CHANGELOG-AUX.md; fi
+            if [ `find unreleased/additions/ -type f -name "*.txt" | wc -l` -ge 1 ] ; then rm unreleased/additions/*.txt; fi
+            if [ `find unreleased/improvements/ -type f -name "*.txt" | wc -l` -ge 1 ] ; then cat unreleased/improvements/* >> unreleased/improvements/improvements.txt; fi
+            if [ `find unreleased/improvements/ -type f -name "*.txt" | wc -l` -ge 1 ] ; then echo -e "\n### Improvements\n" | tee -a CHANGELOG-AUX.md; fi
+            if [ `find unreleased/improvements/ -type f -name "*.txt" | wc -l` -ge 1 ] ; then cat unreleased/improvements/improvements.txt >> CHANGELOG-AUX.md; fi
+            if [ `find unreleased/improvements/ -type f -name "*.txt" | wc -l` -ge 1 ] ; then rm unreleased/improvements/*.txt; fi
+            if [ `find unreleased/corrections/ -type f -name "*.txt" | wc -l` -ge 1 ] ; then cat unreleased/corrections/* >> unreleased/corrections/corrections.txt; fi
+            if [ `find unreleased/corrections/ -type f -name "*.txt" | wc -l` -ge 1 ] ; then echo -e "\n### Fixed\n" | tee -a CHANGELOG-AUX.md; fi
+            if [ `find unreleased/corrections/ -type f -name "*.txt" | wc -l` -ge 1 ] ; then cat unreleased/corrections/corrections.txt >> CHANGELOG-AUX.md; fi
+            if [ `find unreleased/corrections/ -type f -name "*.txt" | wc -l` -ge 1 ] ; then echo -e "\n" | tee -a CHANGELOG-AUX.md; fi
+            if [ `find unreleased/corrections/ -type f -name "*.txt" | wc -l` -ge 1 ] ; then rm unreleased/corrections/*.txt; fi
+            cat CHANGELOG-AUX.md CHANGELOG.md >> CHANGELOG-FINAL.md
+            rm CHANGELOG-AUX.md CHANGELOG.md
+            mv CHANGELOG-FINAL.md CHANGELOG.md
+          fi
+      - name: Commit changing
+        run: |
+          if [[ github.event.head_commit.message != 'Inserting the information of the changes in the changelog file' ]] ; then 
+            git config --global user.name 'Anderson Gomes'
+            git config --global user.email 'andersongomes@users.noreply.github.com'
+            git commit -am "Inserting the information of the changes in the changelog file"
+            git push
+          fi            
